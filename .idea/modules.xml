@@ -3,6 +3,9 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/learn-spring-ecotope.iml" filepath="$PROJECT_DIR$/.idea/learn-spring-ecotope.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/spring.framework.iml" filepath="$PROJECT_DIR$/.idea/modules/spring.framework.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/spring.framework_main.iml" filepath="$PROJECT_DIR$/.idea/modules/spring.framework_main.iml" group="spring.framework" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/spring.framework_test.iml" filepath="$PROJECT_DIR$/.idea/modules/spring.framework_test.iml" group="spring.framework" />
     </modules>
   </component>
 </project>
