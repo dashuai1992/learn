@@ -1,0 +1,99 @@
+ubuntu安装git
+sudo apt install git
+
+设置全局参数，姓名和邮箱
+git config --global user.name "your name"
+git config --global user.email "your E-mail"
+
+创建版本库
+选择一个合适目录,进去
+git init
+该命令创建了一个可被git管理的仓库
+
+将文件添加到仓库
+git add fileName
+
+将文件提交到仓库
+git commit -m “备注，注释”
+
+仓库当前的状态
+git status
+
+查看某个文件上次的修改内容
+git diff fileName
+
+查看工作区和版本库中最新版本的区别
+git diff HEAD -- fileName
+
+查看历史记录
+git log
+git log --pretty=oneline
+git log --graph --pretty=oneline
+
+回退到上一个版本
+git reset --hard HEAD^
+
+指定回到未来的某个版本
+git reset --hard id
+
+历史命令列表
+git reflog
+
+丢弃工作区的修改
+git checkout -- fileName
+
+从远程仓库中删除文件
+git rm fileName
+
+使用github作为远程仓库
+创建ssh key，到用户主目录中的.ssh文件夹中查看是否有
+id_ras和id_ras.pub
+没有的话执行ssh-keygen -t rsa -C "youremail@exa.com"
+登陆到github，account setting SSH Keys 页面添加公钥私钥
+
+添加远程仓库
+在github上创建新的仓库
+git remote add 远程仓库名 远程仓库路径
+或
+使用git clone 克隆远程仓库
+使用git push 推送内容
+
+创建分支
+git checkout -b branchName
+git checkout命令加上-b参数表示创建并切换，相当于以下两条命令：
+git branch dev
+git chechout dev
+
+创建本地分支和远程分支相对应
+git checkout -b dev origin/dev
+
+查看当前分支
+git branch
+
+合并分支到当前分支
+git merge branchName
+使用普通模式合并分支
+git merger --no-ff -m "注释" branchname
+
+删除分支
+git branch -d branchName
+强行删除,该分支可能还没有被提交合并到主分支
+git branch -D branchname
+
+保存当前分支的工作现场
+git stash
+恢复当前分支中的工作现场
+git stash pop
+相当于以下两个命令
+git stash apply 恢复工作现场
+git stash drop 删除工作现场的备份
+
+查看远程库信息
+git remote -v
+
+建立本地分支和远程分支的管理
+git branch --set-upstream branchname origin/branchname
+
+拉取远程数据
+git pull
+
