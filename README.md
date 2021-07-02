@@ -1,12 +1,19 @@
-# learn
+# 笔记
 
+## 设计模式
 
-########设计模式
+- designpattern
 
-#建造模式
+## git使用
 
-#原型模式
+- git
 
-#适配器模式
+## spring源码
 
-#单例模式
+- spring.framework
+
+## cicd
+
+> docker,docker-compose,k8s,dorne,helm,gitea,gitlab等
+
+- cicd

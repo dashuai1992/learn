@@ -1,0 +1,4 @@
+logging:
+  config: classpath:conf/logback-dev.xml
+server:
+  port: 8080

@@ -1,0 +1,89 @@
+## 使用docker run 的玩法
+kind: pipeline
+type: docker
+name: dockerDemo
+
+## 这个配置可以不写，这个不写的话 steps->clone 这一步也不用写，会自动clone
+clone:
+  disable: true
+
+steps:
+## clone代码
+- name: clone
+  pull: if-not-exists
+  image: drone/git
+
+## 使用maven打包
+- name: build
+  pull: if-not-exists
+  image: 192.168.60.200:5000/root/maven:latest
+  volumes:
+    ## maven提速，最好把修改好阿里加速的setting.xml文件也一并挂载到.m2路径下，这样每次下载包的时候巨快
+    - name: m2
+      path: /root/.m2
+  commands:
+    - echo "step of build is starting..."
+    - echo "use maven..."
+    - mvn -version
+    - mvn clean package -Dmaven.test.skip=true -U
+    - echo "build done. "
+
+## 代码打包镜像并上传到私有docker仓库
+- name: build-image
+  pull: if-not-exists
+  image: plugins/docker
+  volumes:
+    - name: docker
+      path: /var/run/docker.sock
+  settings:
+    insecure: true
+    repo: 192.168.60.200:5000/yds/demoyds
+    registry: 192.168.60.200:5000
+    tags:
+      - 'latest'
+
+## 使用docker run 的方式启动容器
+- name: deploy-by-docker-run
+  pull: if-not-exists
+  image: plugins/docker
+  volumes:
+    - name: docker
+      path: /var/run/docker.sock
+  commands:
+    ## 基础的linux命令，很多高级好用的容器不会使，只能用命令玩了
+    ## 列出当前docker版本，（这步命令没什么用，自己编写这个文件时为了能看到控制台信息，心里踏实）
+    - docker -v
+    ## 根据容器名称停止容器，这样做的目的是避免报错停止流程，test -z 判断字符串是否为空，类似三元表达式
+    - test -z $(docker ps -a -q --filter name=my_app) && echo 'no container named my_app' || docker stop $(docker ps -a -q --filter name=my_app)
+    ## 根据容器名称删除容器，这样做的目的是避免报错停止流程，test -z 判断字符串是否为空，类似三元表达式
+    - test -z $(docker ps -a -q --filter name=my_app) && echo 'no container named my_app' || docker rm -f $(docker ps -a -q --filter name=my_app)
+    ## 删除镜像，这步看来是没什么用，使用prune 代替吧 - docker rmi -f 192.168.60.200:5000/srping-boot:v1
+    ## 拉取最新镜像，例子中没写:tag，如果tag不是latest,需要写是tag，如：192.168.60.200:5000/yds/demoyds:v1
+    - docker pull 192.168.60.200:5000/yds/demoyds
+    ## 启动容器的命令，注意加上--name='容器名称'，因为操作容器的命令都是基于名称的
+    - docker run --name=my_app -d -p 31080:8080 -v /data:/data 192.168.60.200:5000/yds/demoyds:latest
+    ## 清除被孤立的镜像
+    - docker image prune -f
+
+  ## 钉钉
+- name: notification
+  pull: if-not-exists
+  image: lddsb/drone-dingtalk-message
+  settings:
+    token: a1ea5a9e86ed0a4f279462d166dedf2f212a29e91aa7859b806e0e0f4f49e340
+    type: markdown
+    tpl: push.tpl
+
+## 挂载主机地址到容器路径，这里写的是主机的路径
+volumes:
+- name: m2
+  host:
+    path: /root/.m2
+- name: docker
+  host:
+    path: /var/run/docker.sock
+
+## 定义能触发cicd的分支
+trigger:
+  branch:
+    - main

@@ -1,0 +1,67 @@
+stages:
+  - build
+  - todo
+  - deploy
+
+job-build:
+  ## 当前使用的镜像
+  image: 192.168.60.200:5000/root/maven:latest
+  ## 任务阶段 compile
+  stage: build
+  ## 是否允许失败，允许的话如果当前阶段运行失败还会继续执行下一个阶段
+  allow_failure: false
+  ## 这个tags对应的是runer的tag
+  tags:
+    - demo
+  ## 只有这个分支提交代码都会触发执行
+  only:
+    - main
+  ## 脚本
+  script:
+    ## pom文件中有docker自动打包的配置，所以就不用再单独编写build docker image的任务了
+    - echo "使用maven进行打包..."
+    - mvn -Dmaven.repo.local=/.m2 clean package dockerfile:push -Dmaven.test.skip=true
+    - echo "使用maven进行打包完毕，docker镜像已经制作完成并推送。"
+    - echo "开始清除jar包"
+    - mvn clean
+    - echo "清除jar包完成"
+
+job-after-build:
+  image: docker:stable
+  stage: build
+  allow_failure: true
+  tags:
+    - demo
+  only:
+    - main
+  script:
+    - echo "清理不可用的镜像..."
+    - docker image prune -f
+  when: on_success
+
+job-todo:
+  stage: todo
+  allow_failure: true
+  tags:
+    - demo
+  script:
+    - echo "something to do..."
+  when: on_success
+
+job-deploy:
+  stage: deploy
+  allow_failure: false
+  tags:
+    - demo
+  script:
+    - echo "开始发布到k8s..."
+  when: on_success
+
+job-after-deploy:
+  stage: deploy
+  allow_failure: true
+  tags:
+    - demo
+  script:
+    - echo "发布完毕。"
+  when: on_success

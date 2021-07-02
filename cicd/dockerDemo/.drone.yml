@@ -1,0 +1,70 @@
+## 使用drone-helm3把项目发布在k8s上的进阶版的玩法
+kind: pipeline
+type: docker
+name: dockerDemo
+
+## 这个配置可以不写，这个不写的话 steps->clone 这一步也不用写，会自动clone
+clone:
+  disable: true
+
+steps:
+## clone代码
+- name: clone
+  pull: if-not-exists
+  image: drone/git
+
+  ## 使用maven打包
+- name: build
+  pull: if-not-exists
+  image: 192.168.60.200:5000/root/maven:latest
+  volumes:
+    ## maven提速，最好把修改好阿里加速的setting.xml文件也一并挂载到.m2路径下，这样每次下载包的时候巨快
+    - name: m2
+      path: /root/.m2
+  commands:
+    - echo "step of build is starting..."
+    - echo "use maven..."
+    - mvn -version
+    - mvn clean package -Dmaven.test.skip=true -U
+    - echo "build done. "
+
+  ## 代码打包镜像并上传到私有docker仓库
+- name: build-image
+  pull: if-not-exists
+  image: plugins/docker
+  volumes:
+    - name: docker
+      path: /var/run/docker.sock
+  settings:
+    insecure: true
+    repo: 192.168.60.200:5000/yds/demoyds
+    registry: 192.168.60.200:5000
+    tags:
+      - 'latest'
+
+  ## 使用helm3的方式启动容器..
+- name: deploy-by-helm3
+  pull: if-not-exists
+  image: pelotech/drone-helm3
+  settings:
+    helm_command: upgrade
+    chart: ./spring-boot-chart
+    release: spring-boot-release
+    kube_api_server: https://192.168.60.200:6443
+    kube_token: eyJhbGciOiJSUzI1NiIsImtpZCI6Ikl1MllTT04tVUZHQWNrWmk5U0dHWjh0TkFaTm4yTW1sS1FmbFJid3VCcWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLXIyenNrIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiJjMWM4YmNkYS0zZTUwLTRiZjgtODI2Zi1iYTZlNzMzY2EwNzkiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06YWRtaW4tdXNlciJ9.vYvhaiQcuLpV8f4KwM1d58r8rZYH6AEksPc28pBlWXPYJ7LG98XWUiWPXCmodnlEDFTX7hJwg43rRga4cLXF0OXPZyyDjzqOEdzgexsX-nuMFhFnFlKVxcFTw9u_C5kfbFiidtTXYZf6WrYsjtEtfNpwc5Eph0U8n4YBYs_UL3aUmUt42YvYRPzvZ4KA5Yx5vzQyGKW1C2Up_2kEX2fTKtvH2tHiTbXwyONB-8S5bngWtpbDAJWJ_56Wi6Ygn226gtxhydPrZJJa8JaxfJtchk7DyqPTQfZnSI7w4xCScts0MtU-j9ZmA2zTDmOttLrvQrsd8XOzHywrDgKql6N-Aw
+    kube_certificate: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5RENDQWJDZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeE1EWXdNakF4TkRRek5sb1hEVE14TURVek1UQXhORFF6Tmxvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTTV3Ck1BTWo1Z2N5eEtNeDA3N2pVb0JIVFVOK3ptQml4WUpBYW90U1kwMEFzajNrcXNRRDBTVGZ3QXNWK3FwalpKbUoKTWZ1dWRuaml1c2NrMjFzSDl1VzBQc0ZMQUxxOEM5bVYxaGdUYjVVSXdrQWVLMk41UEJhRkdPVlZlOFY1NmxtdQpLVzJ0SzBZVHVZRHowUHhaZVZoTm9KYit2TVBqbCsxTUhudjdWQTNRMzZkbHd3VmxwdFZ1Y3pBNGVRcmNtZXhmCndXZnpDQVlBQlNDbUFBNzM1TFdJK1pUQVowN0laYlRocjM2ci9YRUZGOXA0bGNVQXcvNnBzdlNheGFUdDQ4angKUG43U21ReE1GeGw5eWp4eTFiWkJ6ZTFKQ0I4bmg0K1Jjb2dYbnp4YjVlbWRGVE9Pb0cydmpIT1NoTG1FcHN3VwpJd1NGKzJ5TDVyYWVjOWU5b2hzQ0F3RUFBYU1qTUNFd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFHeVFKWklTY0RHNGFQOHdSVlhXMzVlRTZzVnEKQ2hyZHk0TU5tdnFaZ1BwSzllY0wweDZiSWMxeXFoTldKVk9oQXNpQ3R0QVFLMU12RmhBdmVIdjRqZURpSnlGVApsbS9HVy8relNwYUtDblBJU3Y3VXpJd1ZML3VXV1Y1ZFJ3SDl1NG16b3UyRlpBellYY2FsTXEzR2NKRHNRcmxxCm1xZ1dmYXdId2RDMnNiZXdveDlhOTZoWkY0SEN3dFVPRDJQSGRQODY3Mnd0YWhOUitLQUdJUjVKMWZ6cHVCTDQKZUxUOVBGQ1dlU1JxMlZDa1A5d1lMNnVVbkdxTFR1Wkk5MnkvZjcwZmxtcC9MbnRJcUx5QXdIUDg2ZitOYXdPaApBNDJqc1I3K09BblVheDdwYngzclJhVjR3ekFuTHdsNTc3ckxHcFJycmRlVnpYaFdHMkVISU1IV1RrOD0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    kube_service_account: admin-user
+
+## 挂载主机地址到容器路径，这里写的是主机的路径
+volumes:
+  - name: m2
+    host:
+      path: /root/.m2
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+
+## 定义能触发cicd的分支
+trigger:
+  branch:
+    - main
